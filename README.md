@@ -9,7 +9,7 @@ If you need help with this code or would like to report defects or feature reque
 
 ## Private Offer Wizard  
 
-The **Private Offer Wizard** is a reference tool designed to help configure various private offer scenarios in a structured and user-friendly manner. This project provides a guide and reference guide for different billing and agreement structures.
+The [**Private Offer Wizard**](https://microsoft.github.io/commercial-marketplace-private-offer/) is a reference tool designed to help configure various private offer scenarios in a structured and user-friendly manner. This project provides a guide and reference for different billing and agreement structures.
 
 ## Features  
 
@@ -30,6 +30,11 @@ This code is for reference only.
 - **Bootstrap** – Provides a clean and minimalist UI.  
   
 ## Getting Started  
+
+#### Option 1 - [Run it from Github](https://microsoft.github.io/commercial-marketplace-private-offer/)
+  
+
+#### Option 2 - runt it locally:
 
 To use or contribute to this project:  
 
