@@ -27,7 +27,7 @@ let _contractTotal, _numberOfPayments, _paymentFrequency, _variableAmounts, _sin
 
 document.querySelector('.currency-symbol').textContent = new Intl.NumberFormat('default', { style: 'currency', currency: 'USD' }).format(0).replace(/\d/g, '');
 
-// Add event listener for Configure Offer button
+// Add event listener for Configure Offer button.
 document.addEventListener('DOMContentLoaded', function () {
     const configureButton = document.getElementById('cmdConfigure');
     let isConfigured = false;
