@@ -24,6 +24,69 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let _privateOffers = [];
 
+    // Function to get months from contractDuration value
+    function getMonthsFromContractDuration(value) {
+        switch (value) {
+            case "1-Month": return 1;
+            case "1-Year": return 12;
+            case "2-Years": return 24;
+            case "3-Years": return 36;
+            case "4-Years": return 48;
+            case "5-Years": return 60;
+            case "Over 5 years": return Infinity;
+            case "Months with partial year": return null;
+            default: return 0;
+        }
+    }
+
+    // Function to add months to a date
+    function addMonthsToDate(date, months) {
+        if (!(date instanceof Date) || isNaN(date) || !isFinite(months)) {
+            console.error("Invalid date or months:", date, months);
+            return new Date();
+        }
+        const result = new Date(date);
+        result.setMonth(result.getMonth() + months);
+        // Handle day overflow (e.g., March 31 + 1 month = April 30)
+        if (result.getDate() !== date.getDate()) {
+            result.setDate(0);
+        }
+        return result;
+    }
+
+    // Function to calculate number of payments
+    function calculateNumberOfPayments(contractDuration, paymentFrequency) {
+        const contractMonths = getMonthsFromContractDuration(contractDuration);
+        let frequencyMonths;
+
+        switch (paymentFrequency) {
+            case "Month":
+                frequencyMonths = 1;
+                break;
+            case "Year":
+                frequencyMonths = 12;
+                break;
+            case "Flexible":
+                return null;
+            default:
+                return 0;
+        }
+
+        if (contractMonths === null) {
+            return null;
+        }
+
+        if (contractMonths === Infinity) {
+            return Math.ceil(60 / frequencyMonths);
+        }
+
+        if (contractMonths === 0 || frequencyMonths == 0) {
+            return 0;
+        }
+
+        return Math.ceil(contractMonths / frequencyMonths);
+    }
+
     // DOM-safe initialization for dynamic elements
     const currencySymbol = document.querySelector('.currency-symbol');
     const contractDuration = document.getElementById("contractDuration");
@@ -41,6 +104,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const paymentFrequency = document.getElementById("paymentFrequency");
         const numberOfPaymentsGroup = document.getElementById("numberOfPaymentsGroup");
 
+        // Set default paymentFrequency to "Month" on page load
+        if (paymentFrequency) {
+            paymentFrequency.value = "Month";
+        }
+
         function updatePaymentsState() {
             if (!paymentFrequency) return;
             if (contractDuration.value === "1-Month") {
@@ -53,12 +121,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 numberOfPayments.readOnly = false;
                 numberOfPayments.classList.remove("bg-light");
                 paymentFrequency.disabled = false;
+                // Update numberOfPayments based on current inputs
+                const calculatedPayments = calculateNumberOfPayments(contractDuration.value, paymentFrequency.value);
+                if (calculatedPayments !== null) {
+                    numberOfPayments.value = calculatedPayments;
+                }
             }
         }
 
         function toggleNumberOfPaymentsVisibility() {
             if (!paymentFrequency || !numberOfPaymentsGroup) return;
-            if (paymentFrequency.value === "Flexible") { // Show only if "Flexible schedule" is selected
+            if (paymentFrequency.value === "Flexible") {
                 numberOfPaymentsGroup.style.display = "flex";
                 _variableAmounts = true;
             } else {
@@ -69,6 +142,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         contractDuration.addEventListener("change", updatePaymentsState);
         if (paymentFrequency) {
+            paymentFrequency.addEventListener("change", updatePaymentsState);
             paymentFrequency.addEventListener("change", toggleNumberOfPaymentsVisibility);
         }
         updatePaymentsState();
@@ -113,7 +187,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const paymentFrequency = document.getElementById('paymentFrequency');
         if (paymentFrequency) {
-            paymentFrequency.disabled = true; // Make paymentFrequency read-only
+            paymentFrequency.value = "Month";
+            paymentFrequency.disabled = true;
         }
 
         document.getElementById('output').innerHTML = '';
@@ -126,6 +201,9 @@ document.addEventListener("DOMContentLoaded", function () {
         _pricePerPayment = 0;
         _privateOffers.length = 0;
         _payments.length = 0;
+
+        // Re-run updatePaymentsState to set default numberOfPayments
+        updatePaymentsState();
     }
 
     let checkboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -195,20 +273,33 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function SelectScenario() {
         _contractTotal = parseFloat(document.getElementById('contractTotal').value);
-        _numberOfPayments = parseInt(document.getElementById('numberOfPayments').value);
         _paymentFrequency = document.getElementById('paymentFrequency').value;
+
+        // Calculate number of payments
+        const calculatedPayments = calculateNumberOfPayments(contractDuration.value, _paymentFrequency);
+        if (_paymentFrequency === "Flexible") {
+            _numberOfPayments = parseInt(document.getElementById('numberOfPayments').value) || 1;
+        } else if (calculatedPayments !== null) {
+            _numberOfPayments = calculatedPayments;
+        } else {
+            _numberOfPayments = parseInt(document.getElementById('numberOfPayments').value) || 1;
+        }
 
         _billingTerm = _paymentFrequency;
         _paymentOption = "One-time";
         _pricePerPayment = _contractTotal / _numberOfPayments;
 
         if (_variableAmounts) {
+            console.log('VariableAmounts:');
             VariableAmounts();
         } else if (_singlePayment) {
+            console.log('SinglePayment:');
             SinglePayment();
         } else if (_delayBilling) {
+            console.log('DelayedBilling:');
             DelayedBilling();
         } else {
+            console.log('Standard:');
             SinglePrivateOffer();
         }
     }
@@ -447,7 +538,7 @@ document.addEventListener("DOMContentLoaded", function () {
             amount: _payments[i].amount,
         });
 
-        for (let i = 1; i < _payments.length; i++) {
+        for (i = 1; i < _payments.length; i++) {
             if (_payments[i].amount !== _payments[i - 1].amount) {
                 numberOfOffers++;
                 _privateOffers.push({
@@ -517,8 +608,8 @@ document.addEventListener("DOMContentLoaded", function () {
                             <p>A published offer with a public plan configured as follows:</p>
                             <ul>
                                 <li><strong>Pricing model:</strong> ${_pricingModel}</li>
-                                <li><strong>Billing Term:</strong> ${_billingTerm}</li>
-                                <li><strong>Payment option:</strong> ${_paymentOption}</li>
+                                <li><strong>Contract duration:</strong> ${_billingTerm}</li>
+                                <li><strong>Billing frequency:</strong> ${_paymentOption}</li>
                             </ul>
                             <p><strong>Note:</strong> This example assumes the customer will subscribe in ${_thisMonth} ${_thisYear}.</p>
                             <hr>
@@ -597,12 +688,12 @@ document.addEventListener("DOMContentLoaded", function () {
                             <p></p>
                             <p><strong>Customer Action:</strong></p>
                             <p>You can use the following action list as supplemental information to include in your email when sharing the private offer link with your customer.</p>
-                            <li>Accept the private offer(s) to lock the price for the <strong>${_numberOfPayments} ${_paymentFrequency}(s)</strong>.</li>
-                            <li>Subscribe (purchase) the product and ensure that the <strong>${_billingTerm}</strong> term is selected.</li>
+                            <li><strong>Method:</strong> accept the private offer(s) to lock the price for each of the <strong>${_numberOfPayments} ${_paymentFrequency}(s)</strong>.</li>
+                            <li><strong>Method:</strong> subscribe (purchase) the product and ensure that the <strong>${_billingTerm}</strong> term is selected.</li>
                             ${_autoRenew ? `
-                            <li>Ensure to have the <strong>auto-renew is set to true</strong> (selected).</li>
-                            <li>Alternatively, Customer should <strong>switch off auto-renew</strong> if they no longer want the product after the <strong>${_numberOfPayments} ${_paymentFrequency}(s)</strong>.</li>
-                            <li>If <strong>auto-renew</strong> is enabled when the current subscription expires, the renewal will proceed at public pricing if no new or existing private offer is available.</li>
+                            <li><strong>Method:</strong> ensure that you have the <strong>auto-renewal enabled</strong> setting selected.</li>
+                            <li><strong>Method:</strong> alternatively, you should <strong>disable auto-renewal</strong> if you no longer want the product after the <strong>${_numberOfPayments} ${_paymentFrequency}(s)</strong>.</li>
+                            <li><strong>Method:</strong> if <strong>auto-renewal</strong> is enabled when the current subscription expires, the renewal will proceed at public pricing if no new or existing private offer is available.</li>
                             ` : ''}
                             <hr>
                             <details class="mt-3">
@@ -659,44 +750,67 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function SinglePrivateOffer() {
         let output = document.getElementById('output');
+        if (!output) {
+            console.error("Output element not found");
+            return;
+        }
         output.innerHTML = '';
 
-        if (_paymentFrequency === 'Month') {
-            if (_numberOfPayments === 1) {
-                _billingTerm = "1-Month";
-                _paymentOption = "One-time";
-            } else if (_numberOfPayments < 12) {
-                _billingTerm = "One-time";
-                _paymentOption = "One-time";
-                _autoRenew = true;
-            } else if (_numberOfPayments === 12) {
-                _billingTerm = "1-Year";
-                _paymentOption = "Per month";
-            } else if (_numberOfPayments < 24) {
-                _billingTerm = "One-time";
-                _paymentOption = "One-time";
-                _autoRenew = true;
-            }
-        } else if (_paymentFrequency === 'Year' && _numberOfPayments === 1) {
-            _billingTerm = "1-Year";
-            _paymentOption = "One-time";
+        if (!contractDuration) {
+            console.error("Contract duration element not found");
+            alert("Configuration error: Please ensure the form is properly loaded.");
+            return;
         }
 
-        if (_paymentFrequency === 'Month') {
-            _endDate.setMonth(_startDate.getMonth() + _numberOfPayments);
-        } else if (_paymentFrequency === 'Year') {
-            _endDate.setFullYear(_endDate.getFullYear() + _numberOfPayments);
+        const validDurations = ["1-Month", "1-Year", "2-Years", "3-Years", "4-Years", "5-Years", "Over 5 years", "Months with partial year"];
+        if (!validDurations.includes(contractDuration.value)) {
+            console.error("Invalid contract duration:", contractDuration.value);
+            alert("Please select a valid contract duration.");
+            return;
         }
+
+        console.log("Debug: contractDuration.value:", contractDuration.value);
+        console.log("Debug: contractInMonths:", getMonthsFromContractDuration(contractDuration.value));
+        console.log("Debug: paymentFrequency:", _paymentFrequency);
+        console.log("Debug: numberOfPayments:", _numberOfPayments);
+
+        // Compute contract duration in months
+        const contractInMonths = getMonthsFromContractDuration(contractDuration.value);
+
+        // Set billing term to contract duration value
+        _billingTerm = contractDuration.value;
+
+        // Set auto-renew based on contract duration
+        _autoRenew = contractInMonths === Infinity || contractInMonths === null || contractInMonths <= 0;
+
+        // Set payment option based on contract duration
+        //_paymentOption = (contractInMonths === 1 || contractInMonths === 12) ? "One-time" : _paymentFrequency;
+        _paymentOption = (contractInMonths === 1 ) ? "One-time" : _paymentFrequency;
+
+        // Set end date based on contract duration
+        _endDate = new Date(_startDate);
+        if (isFinite(contractInMonths) && contractInMonths !== null && contractInMonths > 0) {
+            _endDate = addMonthsToDate(_startDate, contractInMonths);
+        } else if (contractInMonths === Infinity) {
+            _endDate.setFullYear(_startDate.getFullYear() + 5);
+        } else if (contractInMonths === null) {
+            _endDate = addMonthsToDate(_startDate, _numberOfPayments);
+        }
+
+        console.log("Debug: _startDate:", _startDate.toLocaleDateString());
+        console.log("Debug: _endDate:", _endDate.toLocaleDateString());
 
         _privateOffers.length = 0;
 
         _privateOffers.push({
             id: 1,
-            numberOfPayments: 1,
-            startDate: new Date(),
-            endDate: _endDate,
+            numberOfPayments: _numberOfPayments,
+            startDate: new Date(_startDate),
+            endDate: new Date(_endDate),
             amount: _pricePerPayment,
         });
+
+        console.log("Debug: _privateOffers[0].endDate:", _privateOffers[0].endDate.toLocaleDateString());
 
         DisplayPrivateOffers();
     }
