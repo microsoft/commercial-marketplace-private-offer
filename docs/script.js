@@ -3,9 +3,9 @@ document.addEventListener("DOMContentLoaded", function () {
     let _thisMonth = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
     let _thisYear = new Date().getFullYear();
     let _pricePerPayment, _startDate = new Date(), _endDate = new Date();
-    let _pricingModel = "Flat rate", _billingTerm = "N/A", _paymentOption = "N/A", _exceptionScenario;
+    let _pricingModel = "Flat rate", _billingTerm = "N/A", _paymentOption = "N/A";
     let _autoRenew = false;
-    let _contractTotal, _numberOfPayments, _paymentFrequency, _variableAmounts = false, _singlePayment = false, _delayBilling = false;
+    let _contractTotal, _contractDuration, _contractInMonths,_numberOfPayments, _paymentFrequency, _variableAmounts = false, _singlePayment = false, _delayBilling = false;
 
     let _payment = {
         id: 0,
@@ -275,6 +275,14 @@ document.addEventListener("DOMContentLoaded", function () {
         _contractTotal = parseFloat(document.getElementById('contractTotal').value);
         _paymentFrequency = document.getElementById('paymentFrequency').value;
 
+        //TODO: Refactor -hugos
+        _contractInMonths = getMonthsFromContractDuration(contractDuration.value);
+        _contractDuration = contractDuration.value; 
+        _paymentOption = (_contractInMonths === 1 ) ? "One-time" : _paymentFrequency;
+        _endDate = addMonthsToDate(_startDate, _contractInMonths);
+        // End TODO: Refactor
+
+
         // Calculate number of payments
         const calculatedPayments = calculateNumberOfPayments(contractDuration.value, _paymentFrequency);
         if (_paymentFrequency === "Flexible") {
@@ -288,16 +296,11 @@ document.addEventListener("DOMContentLoaded", function () {
         _billingTerm = _paymentFrequency;
         _paymentOption = "One-time";
         _pricePerPayment = _contractTotal / _numberOfPayments;
-
+        _contractDuration = contractDuration.value;
+        
         if (_variableAmounts) {
             console.log('VariableAmounts:');
             VariableAmounts();
-        } else if (_singlePayment) {
-            console.log('SinglePayment:');
-            SinglePayment();
-        } else if (_delayBilling) {
-            console.log('DelayedBilling:');
-            DelayedBilling();
         } else {
             console.log('Standard:');
             SinglePrivateOffer();
@@ -430,7 +433,7 @@ document.addEventListener("DOMContentLoaded", function () {
             let tmpInvoiceDate = new Date(initialInvoiceDate);
             const increment = i - 1;
 
-            if (_paymentFrequency === 'Month') {
+            if (_paymentFrequency === 'Month' | _paymentFrequency === 'Flexible') {
                 tmpInvoiceDate.setMonth(tmpInvoiceDate.getMonth() + increment);
                 if (tmpInvoiceDate.getDate() !== initialInvoiceDate.getDate()) {
                     tmpInvoiceDate.setDate(0);
@@ -518,7 +521,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (tmpTotal !== _contractTotal) {
             alert("The deal total does not match the sum of all payments: $" + tmpTotal.toFixed(2) + " vs $" + _contractTotal.toFixed(2) + ", please review the payment amounts and update as appropriate.");
         } else {
-            console.log("Debug: _payments", _payments);
             CalculatePrivateOffers();
             DisplayPrivateOffers();
         }
@@ -534,30 +536,31 @@ document.addEventListener("DOMContentLoaded", function () {
             id: numberOfOffers,
             numberOfPayments: 1,
             startDate: _payments[i].dueDate,
-            endDate: AdjustEndDate(_payments[i].dueDate, 1),
+            //endDate: AdjustEndDate(_payments[i].dueDate, 1),
+            endDate: _endDate,
             amount: _payments[i].amount,
         });
 
-        for (i = 1; i < _payments.length; i++) {
-            if (_payments[i].amount !== _payments[i - 1].amount) {
-                numberOfOffers++;
-                _privateOffers.push({
-                    id: numberOfOffers,
-                    numberOfPayments: 1,
-                    startDate: _payments[i].dueDate,
-                    endDate: AdjustEndDate(_payments[i].dueDate, 1),
-                    amount: _payments[i].amount,
-                });
-            } else {
-                _privateOffers[numberOfOffers - 1].numberOfPayments++;
-                _privateOffers[numberOfOffers - 1].endDate = AdjustEndDate(
-                    _privateOffers[numberOfOffers - 1].startDate,
-                    _privateOffers[numberOfOffers - 1].numberOfPayments
-                );
-            }
-        }
+        //console.log("Debug: _endDate", _endDate)
 
-        console.log("Debug Output: _privateOffers", _privateOffers);
+        //for (i = 1; i < _payments.length; i++) {
+        //    if (_payments[i].amount !== _payments[i - 1].amount) {
+        //        numberOfOffers++;
+        //        _privateOffers.push({
+        //            id: numberOfOffers,
+        //            numberOfPayments: 1,
+        //            startDate: _payments[i].dueDate,
+        //            endDate: _endDate, //AdjustEndDate(_payments[i].dueDate, 1),
+        //            amount: _payments[i].amount,
+        //        });
+        //    } else {
+        //        _privateOffers[numberOfOffers - 1].numberOfPayments++;
+        //        _privateOffers[numberOfOffers - 1].endDate = AdjustEndDate(
+        //            _privateOffers[numberOfOffers - 1].startDate,
+        //            _privateOffers[numberOfOffers - 1].numberOfPayments
+        //        );
+        //    }
+       // }
     }
 
     function AdjustEndDate(endDate, numberOfPayments) {
@@ -608,8 +611,8 @@ document.addEventListener("DOMContentLoaded", function () {
                             <p>A published offer with a public plan configured as follows:</p>
                             <ul>
                                 <li><strong>Pricing model:</strong> ${_pricingModel}</li>
-                                <li><strong>Contract duration:</strong> ${_billingTerm}</li>
-                                <li><strong>Billing frequency:</strong> ${_paymentOption}</li>
+                                <li><strong>Contract duration:</strong> ${_contractDuration}</li>
+                                <li><strong>Billing frequency:</strong> ${_billingTerm}</li>
                             </ul>
                             <p><strong>Note:</strong> This example assumes the customer will subscribe in ${_thisMonth} ${_thisYear}.</p>
                             <hr>
@@ -645,14 +648,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
         _privateOffers.forEach((offer) => {
             content += `
-                            <p><strong>Private Offer ${offer.id}</strong></p>
-                            <li><strong>Start date:</strong> ${FormatDateToMMYYYY(offer.startDate)}</li>
-                            <li><strong>End date:</strong> ${FormatDateToMMYYYY(offer.endDate)}</li>
-                            <li><strong>Set the price per payment to:</strong> ${formatCurrency(offer.amount)}</li>
-                            <li><strong>Billing term:</strong> ${_billingTerm}</li>
-                            <li><strong>Payment option:</strong> ${_paymentOption}</li>
-                            <p></p>
+            <p><strong>Private Offer ${offer.id}</strong></p>
+            <li><strong>Start date:</strong> ${FormatDateToMMYYYY(offer.startDate)}</li>
+            <li><strong>End date:</strong> ${FormatDateToMMYYYY(_endDate)}</li>
             `;
+
+            if (_paymentFrequency === "Flexible") {
+                content += `
+                <li><strong>Contract duration:</strong> ${_contractDuration}</li>
+                <li><strong>Billing frequency:</strong> ${_billingTerm}</li>
+                <li><strong>Pricing:</strong> </li>
+                `;
+                
+                _payments.forEach((payment) => {
+                    content += `<li><strong>Amount:</strong> ${formatCurrency(payment.amount)} <strong>Charge date:</strong> ${payment.dueDate}</li>`;
+                });
+                
+                content += `<p></p>`;
+            } else {
+                content += `
+                <li><strong>Set the price per payment to:</strong> ${formatCurrency(offer.amount)}</li>
+                <li><strong>Billing term:</strong> ${_billingTerm}</li>
+                <li><strong>Payment option:</strong> ${_paymentOption}</li>
+                <p></p>`;
+            }
         });
 
         content += `
@@ -769,22 +788,18 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        console.log("Debug: contractDuration.value:", contractDuration.value);
-        console.log("Debug: contractInMonths:", getMonthsFromContractDuration(contractDuration.value));
-        console.log("Debug: paymentFrequency:", _paymentFrequency);
-        console.log("Debug: numberOfPayments:", _numberOfPayments);
 
         // Compute contract duration in months
         const contractInMonths = getMonthsFromContractDuration(contractDuration.value);
 
         // Set billing term to contract duration value
-        _billingTerm = contractDuration.value;
+        //_billingTerm = contractDuration.value;
+        _contractDuration = contractDuration.value; 
 
         // Set auto-renew based on contract duration
-        _autoRenew = contractInMonths === Infinity || contractInMonths === null || contractInMonths <= 0;
+        //_autoRenew = contractInMonths === Infinity || contractInMonths === null || contractInMonths <= 0;
 
         // Set payment option based on contract duration
-        //_paymentOption = (contractInMonths === 1 || contractInMonths === 12) ? "One-time" : _paymentFrequency;
         _paymentOption = (contractInMonths === 1 ) ? "One-time" : _paymentFrequency;
 
         // Set end date based on contract duration
@@ -797,8 +812,6 @@ document.addEventListener("DOMContentLoaded", function () {
             _endDate = addMonthsToDate(_startDate, _numberOfPayments);
         }
 
-        console.log("Debug: _startDate:", _startDate.toLocaleDateString());
-        console.log("Debug: _endDate:", _endDate.toLocaleDateString());
 
         _privateOffers.length = 0;
 
@@ -806,11 +819,8 @@ document.addEventListener("DOMContentLoaded", function () {
             id: 1,
             numberOfPayments: _numberOfPayments,
             startDate: new Date(_startDate),
-            endDate: new Date(_endDate),
             amount: _pricePerPayment,
         });
-
-        console.log("Debug: _privateOffers[0].endDate:", _privateOffers[0].endDate.toLocaleDateString());
 
         DisplayPrivateOffers();
     }
