@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let _pricePerPayment, _startDate = new Date(), _endDate = new Date();
     let _pricingModel = "Flat rate", _billingTerm = "N/A", _paymentOption = "N/A";
     let _autoRenew = false;
-    let _contractTotal, _contractDuration, _contractInMonths,_numberOfPayments, _paymentFrequency, _variableAmounts = false, _singlePayment = false, _delayBilling = false;
+    let _contractTotal, _contractDuration, _contractInMonths, _numberOfPayments, _paymentFrequency, _variableAmounts = false, _singlePayment = false, _delayBilling = false;
 
     let _payment = {
         id: 0,
@@ -132,13 +132,23 @@ document.addEventListener("DOMContentLoaded", function () {
         function toggleNumberOfPaymentsVisibility() {
             if (!paymentFrequency || !numberOfPaymentsGroup) return;
             if (paymentFrequency.value === "Flexible") {
-                numberOfPaymentsGroup.style.display = "flex";
+                numberOfPaymentsGroup.style.display = "block";
                 _variableAmounts = true;
             } else {
                 numberOfPaymentsGroup.style.display = "none";
                 _variableAmounts = false;
             }
         }
+
+        // Enforce 1-60 constraint on numberOfPayments when losing focus
+        numberOfPayments.addEventListener("blur", function () {
+            let value = parseInt(numberOfPayments.value);
+            if (isNaN(value) || value <= 0) {
+                numberOfPayments.value = 1;
+            } else if (value > 60) {
+                numberOfPayments.value = 60;
+            }
+        });
 
         contractDuration.addEventListener("change", updatePaymentsState);
         if (paymentFrequency) {
@@ -273,24 +283,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function SelectScenario() {
         _contractTotal = parseFloat(document.getElementById('contractTotal').value);
+        if (isNaN(_contractTotal)) {
+            alert("Invalid contract total");
+            return;
+        }
         _paymentFrequency = document.getElementById('paymentFrequency').value;
 
         //TODO: Refactor -hugos
         _contractInMonths = getMonthsFromContractDuration(contractDuration.value);
         _contractDuration = contractDuration.value; 
-        _paymentOption = (_contractInMonths === 1 ) ? "One-time" : _paymentFrequency;
+        _paymentOption = (_contractInMonths === 1) ? "One-time" : _paymentFrequency;
         _endDate = addMonthsToDate(_startDate, _contractInMonths);
         // End TODO: Refactor
 
-
         // Calculate number of payments
         const calculatedPayments = calculateNumberOfPayments(contractDuration.value, _paymentFrequency);
+        const numberOfPaymentsInput = document.getElementById('numberOfPayments');
+        let inputPayments = parseInt(numberOfPaymentsInput.value) || 1;
+
         if (_paymentFrequency === "Flexible") {
-            _numberOfPayments = parseInt(document.getElementById('numberOfPayments').value) || 1;
+            _numberOfPayments = Math.max(1, Math.min(60, inputPayments));
         } else if (calculatedPayments !== null) {
-            _numberOfPayments = calculatedPayments;
+            _numberOfPayments = Math.max(1, Math.min(60, calculatedPayments));
         } else {
-            _numberOfPayments = parseInt(document.getElementById('numberOfPayments').value) || 1;
+            _numberOfPayments = Math.max(1, Math.min(60, inputPayments));
         }
 
         _billingTerm = _paymentFrequency;
@@ -315,6 +331,10 @@ document.addEventListener("DOMContentLoaded", function () {
         _paymentFrequency = 'Month';
         _billingTerm = "Month";
         _contractTotal = parseFloat(document.getElementById('contractTotal').value);
+        if (isNaN(_contractTotal)) {
+            alert("Invalid contract total");
+            return;
+        }
 
         const today = new Date();
         const currentMonthYear = `${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
@@ -433,7 +453,7 @@ document.addEventListener("DOMContentLoaded", function () {
             let tmpInvoiceDate = new Date(initialInvoiceDate);
             const increment = i - 1;
 
-            if (_paymentFrequency === 'Month' | _paymentFrequency === 'Flexible') {
+            if (_paymentFrequency === 'Month' || _paymentFrequency === 'Flexible') {
                 tmpInvoiceDate.setMonth(tmpInvoiceDate.getMonth() + increment);
                 if (tmpInvoiceDate.getDate() !== initialInvoiceDate.getDate()) {
                     tmpInvoiceDate.setDate(0);
@@ -528,39 +548,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function CalculatePrivateOffers() {
         let numberOfOffers = 1;
-        let i = 0;
-
         _privateOffers.length = 0;
 
-        _privateOffers.push({
-            id: numberOfOffers,
-            numberOfPayments: 1,
-            startDate: _payments[i].dueDate,
-            //endDate: AdjustEndDate(_payments[i].dueDate, 1),
-            endDate: _endDate,
-            amount: _payments[i].amount,
+        _payments.forEach((payment, index) => {
+            _privateOffers.push({
+                id: numberOfOffers++,
+                numberOfPayments: 1,
+                startDate: stringToDate(payment.dueDate),
+                endDate: _endDate,
+                amount: payment.amount,
+            });
         });
-
-        //console.log("Debug: _endDate", _endDate)
-
-        //for (i = 1; i < _payments.length; i++) {
-        //    if (_payments[i].amount !== _payments[i - 1].amount) {
-        //        numberOfOffers++;
-        //        _privateOffers.push({
-        //            id: numberOfOffers,
-        //            numberOfPayments: 1,
-        //            startDate: _payments[i].dueDate,
-        //            endDate: _endDate, //AdjustEndDate(_payments[i].dueDate, 1),
-        //            amount: _payments[i].amount,
-        //        });
-        //    } else {
-        //        _privateOffers[numberOfOffers - 1].numberOfPayments++;
-        //        _privateOffers[numberOfOffers - 1].endDate = AdjustEndDate(
-        //            _privateOffers[numberOfOffers - 1].startDate,
-        //            _privateOffers[numberOfOffers - 1].numberOfPayments
-        //        );
-        //    }
-       // }
     }
 
     function AdjustEndDate(endDate, numberOfPayments) {
@@ -648,29 +646,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
         _privateOffers.forEach((offer) => {
             content += `
-            <p><strong>Private Offer ${offer.id}</strong></p>
-            <li><strong>Start date:</strong> ${FormatDateToMMYYYY(offer.startDate)}</li>
-            <li><strong>End date:</strong> ${FormatDateToMMYYYY(_endDate)}</li>
+                <p><strong>Private Offer ${offer.id}</strong></p>
+                <ul>
+                    <li><strong>Start date:</strong> ${FormatDateToMMYYYY(offer.startDate)}</li>
+                    <li><strong>End date:</strong> ${FormatDateToMMYYYY(_endDate)}</li>
             `;
 
             if (_paymentFrequency === "Flexible") {
                 content += `
-                <li><strong>Contract duration:</strong> ${_contractDuration}</li>
-                <li><strong>Billing frequency:</strong> ${_billingTerm}</li>
-                <li><strong>Pricing:</strong> </li>
+                    <li><strong>Contract duration:</strong> ${_contractDuration}</li>
+                    <li><strong>Billing frequency:</strong> ${_billingTerm}</li>
+                    <li><strong>Pricing:</strong></li>
                 `;
-                
                 _payments.forEach((payment) => {
                     content += `<li><strong>Amount:</strong> ${formatCurrency(payment.amount)} <strong>Charge date:</strong> ${payment.dueDate}</li>`;
                 });
-                
-                content += `<p></p>`;
+                content += `</ul><p></p>`;
             } else {
                 content += `
-                <li><strong>Set the price per payment to:</strong> ${formatCurrency(offer.amount)}</li>
-                <li><strong>Billing term:</strong> ${_billingTerm}</li>
-                <li><strong>Payment option:</strong> ${_paymentOption}</li>
-                <p></p>`;
+                    <li><strong>Set the price per payment to:</strong> ${formatCurrency(offer.amount)}</li>
+                    <li><strong>Billing term:</strong> ${_billingTerm}</li>
+                    <li><strong>Payment option:</strong> ${_paymentOption}</li>
+                </ul><p></p>`;
             }
         });
 
@@ -702,32 +699,35 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
                         <div class="accordion-body">
                             <p><strong>ISV Action:</strong></p>
-                            <li>Prepare and send an email to your customer, including the link(s) to the newly created private offer(s). </li>
-                            <li>At the end of the <strong>${_numberOfPayments} ${_paymentFrequency}</strong>, you will need to set up a new private offer on the same public plan or customer will fall back to the list price.</li>
-                            <p></p>
+                            <ul>
+                                <li>Prepare and send an email to your customer, including the link(s) to the newly created private offer(s).</li>
+                                <li>At the end of the <strong>${_numberOfPayments} ${_paymentFrequency}</strong>, you will need to set up a new private offer on the same public plan or customer will fall back to the list price.</li>
+                            </ul>
                             <p><strong>Customer Action:</strong></p>
                             <p>You can use the following action list as supplemental information to include in your email when sharing the private offer link with your customer.</p>
-                            <li><strong>Method:</strong> accept the private offer(s) to lock the price for each of the <strong>${_numberOfPayments} ${_paymentFrequency}(s)</strong>.</li>
-                            <li><strong>Method:</strong> subscribe (purchase) the product and ensure that the <strong>${_billingTerm}</strong> term is selected.</li>
-                            ${_autoRenew ? `
-                            <li><strong>Method:</strong> ensure that you have the <strong>auto-renewal enabled</strong> setting selected.</li>
-                            <li><strong>Method:</strong> alternatively, you should <strong>disable auto-renewal</strong> if you no longer want the product after the <strong>${_numberOfPayments} ${_paymentFrequency}(s)</strong>.</li>
-                            <li><strong>Method:</strong> if <strong>auto-renewal</strong> is enabled when the current subscription expires, the renewal will proceed at public pricing if no new or existing private offer is available.</li>
-                            ` : ''}
+                            <ul>
+                                <li><strong>Method:</strong> Accept the private offer(s) to lock the price for each of the <strong>${_numberOfPayments} ${_paymentFrequency}(s)</strong>.</li>
+                                <li><strong>Method:</strong> Subscribe (purchase) the product and ensure that the <strong>${_billingTerm}</strong> term is selected.</li>
+                                ${_autoRenew ? `
+                                <li><strong>Method:</strong> Ensure that you have the <strong>auto-renewal enabled</strong> setting selected.</li>
+                                <li><strong>Method:</strong> Alternatively, you should <strong>disable auto-renewal</strong> if you no longer want the product after the <strong>${_numberOfPayments} ${_paymentFrequency}(s)</strong>.</li>
+                                <li><strong>Method:</strong> If <strong>auto-renewal</strong> is enabled when the current subscription expires, the renewal will proceed at public pricing if no new or existing private offer is available.</li>
+                                ` : ''}
+                            </ul>
                             <hr>
                             <details class="mt-3">
                                 <summary><strong>Related Documentation</strong></summary>
                                 <ul class="mt-2">
                                     <li><a href="https://learn.microsoft.com/en-us/marketplace/private-offers-overview" target="_blank" rel="noopener noreferrer">Customer private offers</a></li>
-                                    <li><a href="https://learn.microsoft.com/en-us/marketplace/private-offers-pre-check" target="_blank" rel="noopener">Customer: Prepare your account</a></li>
-                                    <li><a href="https://learn.microsoft.com/en-us/marketplace/private-offers-accept-offer" target="_blank" rel="noopener">Customer: Accept the offer</a></li>
-                                    <li><a href="https://learn.microsoft.com/en-us/marketplace/private-offers-purchase" target="_blank" rel="noopener">Customer: Purchase or subscribe</a></li>
+                                    <li><a href="https://learn.microsoft.com/en-us/marketplace/private-offers-pre-check" target="_blank" rel="noopener noreferrer">Customer: Prepare your account</a></li>
+                                    <li><a href="https://learn.microsoft.com/en-us/marketplace/private-offers-accept" target="_blank" rel="noopener noreferrer">Customer Action: Accept the offer</a></li>
+                                    <li><a href="https://learn.microsoft.com/en-us/marketplace/private-offers-purchase" target="_blank" rel="noopener noreferrer">Customer: Purchase or subscribe</a></li>
                                 </ul>
                             </details>
                             <details class="mt-3">
                                 <summary><strong>Related Mastering the Marketplace Videos</strong></summary>
                                 <ul class="mt-2">
-                                    <li><a href="https://partner.microsoft.com/en-us/training/assets/detail/private-offers-overview-mp4" target="_blank" rel="noopener noreferrer">Private offers overview</a></li>
+                                    <li><a href="https://partner.microsoft.com/en-us/training/assets/detail/private-offers-overview" target="_blank" rel="noopener noreferrer">Private Offerings Overview</a></li>
                                 </ul>
                             </details>
                         </div>
@@ -741,6 +741,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function FormatDateToMMYYYY(date) {
         let parsedDate = stringToDate(date);
+        if (!parsedDate) return "Invalid Date";
 
         const formattedMonth = String(parsedDate.getMonth() + 1).padStart(2, '0');
         const formattedYear = parsedDate.getFullYear();
@@ -759,7 +760,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">How to configure delayed billing</h5>
-                    <p class="card-text">Select the <strong>Variable amounts</strong> option and change the price to zero for one or more of the payments.</p>
+                    <p class="card-text">Select the <strong>Variable amounts</strong> option and change the price to zero for one or more payment(s).</p>
                 </div>
             </div>
         `;
@@ -777,7 +778,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!contractDuration) {
             console.error("Contract duration element not found");
-            alert("Configuration error: Please ensure the form is properly loaded.");
+            alert("Configuration error: Please ensure that the form is properly loaded.");
             return;
         }
 
@@ -788,21 +789,16 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-
         // Compute contract duration in months
         const contractInMonths = getMonthsFromContractDuration(contractDuration.value);
 
         // Set billing term to contract duration value
-        //_billingTerm = contractDuration.value;
-        _contractDuration = contractDuration.value; 
-
-        // Set auto-renew based on contract duration
-        //_autoRenew = contractInMonths === Infinity || contractInMonths === null || contractInMonths <= 0;
+        _contractDuration = contractDuration.value;
 
         // Set payment option based on contract duration
-        _paymentOption = (contractInMonths === 1 ) ? "One-time" : _paymentFrequency;
+        _paymentOption = (contractInMonths === 1) ? "One-time" : _paymentFrequency;
 
-        // Set end date based on contract duration
+        // Set end date
         _endDate = new Date(_startDate);
         if (isFinite(contractInMonths) && contractInMonths !== null && contractInMonths > 0) {
             _endDate = addMonthsToDate(_startDate, contractInMonths);
@@ -812,13 +808,13 @@ document.addEventListener("DOMContentLoaded", function () {
             _endDate = addMonthsToDate(_startDate, _numberOfPayments);
         }
 
-
         _privateOffers.length = 0;
 
         _privateOffers.push({
             id: 1,
             numberOfPayments: _numberOfPayments,
             startDate: new Date(_startDate),
+            endDate: _endDate,
             amount: _pricePerPayment,
         });
 
