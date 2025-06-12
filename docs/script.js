@@ -550,7 +550,8 @@ document.addEventListener("DOMContentLoaded", function () {
         let numberOfOffers = 1;
         _privateOffers.length = 0;
 
-        _payments.forEach((payment, index) => {
+        for (let index = 0; index < _payments.length; index++) {
+            const payment = _payments[index];
             _privateOffers.push({
                 id: numberOfOffers++,
                 numberOfPayments: 1,
@@ -558,7 +559,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 endDate: _endDate,
                 amount: payment.amount,
             });
-        });
+            break;
+        }
     }
 
     function AdjustEndDate(endDate, numberOfPayments) {
