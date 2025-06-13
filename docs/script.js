@@ -253,6 +253,16 @@ document.addEventListener("DOMContentLoaded", function () {
             return input;
         }
 
+        // Attempt to parse YYYY-MM-DD first, as this is the standard for <input type="date">
+        const yyyyMmDdMatch = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (yyyyMmDdMatch) {
+            const year = parseInt(yyyyMmDdMatch[1]);
+            const month = parseInt(yyyyMmDdMatch[2]) - 1; // Month is 0-indexed
+            const day = parseInt(yyyyMmDdMatch[3]);
+            return new Date(year, month, day);
+        }
+
+        // Fallback to locale detection for other formats (like MM/DD/YYYY or DD/MM/YYYY)
         if (typeof input !== 'string') {
             console.error("Expected a string for date input, but received:", input);
             return null;
@@ -263,7 +273,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const today = new Date();
         const currentDay = today.getDate();
 
-        if (parts.length === 3) {
+        if (parts.length === 3) { // This part is for MM/DD/YYYY or DD/MM/YYYY
             if (format === "dd/MM/yyyy") {
                 return new Date(parts[2], parts[1] - 1, parts[0]);
             } else if (format === "MM/dd/yyyy") {
@@ -273,7 +283,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        if (parts.length === 2 && parts[0] <= 12 && parts[1] >= 1000) {
+        if (parts.length === 2 && parts[0] <= 12 && parts[1] >= 1000) { // For MM/YYYY
             return new Date(parts[1], parts[0] - 1, currentDay);
         }
 
@@ -468,7 +478,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         <input type="number" id="payment-${i}" value="${_pricePerPayment.toFixed(2)}" class="form-control payment-input">
                     </div>
                     <div class="col">
-                        <input type="text" id="date-${i}" value="${FormatDateToMMYYYY(tmpInvoiceDate)}" class="form-control" readonly>
+                        <input type="date" id="date-${i}" value="${tmpInvoiceDate.toISOString().split('T')[0]}" class="form-control date-input">
                     </div>
                 </div>
             `;
@@ -476,7 +486,7 @@ document.addEventListener("DOMContentLoaded", function () {
             _payments.push({
                 id: i,
                 amount: _pricePerPayment,
-                dueDate: tmpInvoiceDate.toLocaleDateString()
+                dueDate: tmpInvoiceDate.toISOString().split('T')[0] // Store in yyyy-MM-dd for input type="date"
             });
         }
 
@@ -511,6 +521,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         document.querySelectorAll('.payment-input').forEach(input => {
             input.addEventListener('input', updateDealValues);
+        });
+
+        document.querySelectorAll('.date-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const index = parseInt(this.id.split('-')[1]) - 1;
+                _payments[index].dueDate = this.value; // Update the dueDate in _payments array
+            });
         });
 
         updateDealValues();
@@ -661,7 +678,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <li><strong>Pricing:</strong></li>
                 `;
                 _payments.forEach((payment) => {
-                    content += `<li><strong>Amount:</strong> ${formatCurrency(payment.amount)} <strong>Charge date:</strong> ${payment.dueDate}</li>`;
+                    content += `<li><strong>Amount:</strong> ${formatCurrency(payment.amount)} <strong>Charge date:</strong> ${FormatDateToLocale(payment.dueDate)}</li>`;
                 });
                 content += `</ul><p></p>`;
             } else {
@@ -749,6 +766,15 @@ document.addEventListener("DOMContentLoaded", function () {
         const formattedYear = parsedDate.getFullYear();
 
         return `${formattedMonth}/${formattedYear}`;
+    }
+
+    function FormatDateToLocale(date) {
+        let parsedDate = stringToDate(date);
+        if (!parsedDate) return "Invalid Date";
+        // Use toLocaleDateString without options to get the default locale format (MM/DD/YYYY or DD/MM/YYYY)
+        // If you specifically need MM/DD/YYYY always, you can use:
+        // return new Intl.DateTimeFormat('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }).format(parsedDate);
+        return parsedDate.toLocaleDateString();
     }
 
     function DelayedBilling() {
