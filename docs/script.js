@@ -140,13 +140,13 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        // Enforce 1-60 constraint on numberOfPayments when losing focus
+        // Enforce 1-70 constraint on numberOfPayments when losing focus
         numberOfPayments.addEventListener("blur", function () {
             let value = parseInt(numberOfPayments.value);
             if (isNaN(value) || value <= 0) {
                 numberOfPayments.value = 1;
-            } else if (value > 60) {
-                numberOfPayments.value = 60;
+            } else if (value > 70) {
+                numberOfPayments.value = 70;
             }
         });
 
@@ -312,11 +312,11 @@ document.addEventListener("DOMContentLoaded", function () {
         let inputPayments = parseInt(numberOfPaymentsInput.value) || 1;
 
         if (_paymentFrequency === "Flexible") {
-            _numberOfPayments = Math.max(1, Math.min(60, inputPayments));
+            _numberOfPayments = Math.max(1, Math.min(70, inputPayments));
         } else if (calculatedPayments !== null) {
-            _numberOfPayments = Math.max(1, Math.min(60, calculatedPayments));
+            _numberOfPayments = Math.max(1, Math.min(70, calculatedPayments));
         } else {
-            _numberOfPayments = Math.max(1, Math.min(60, inputPayments));
+            _numberOfPayments = Math.max(1, Math.min(70, inputPayments));
         }
 
         _billingTerm = _paymentFrequency;

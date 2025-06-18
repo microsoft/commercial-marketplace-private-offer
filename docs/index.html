@@ -9,6 +9,9 @@
 <body>
     <div class="container mt-5">
         <h1>SaaS Private Offer Wizard</h1>
+        <p>This tool helps you quickly draft a deal and provides guidance on prerequisites, offer configuration, and customer actions.</p>
+        <hr class="mb-4">
+
         <form id="privateOfferForm">
             <div class="mb-3">
                 <label for="contractTotal" class="form-label">Contract Total (<span class="currency-symbol">$</span>)</label>
@@ -40,7 +43,7 @@
             <div id="numberOfPaymentsGroup" class="form-group" style="display: none;">
                 <label for="numberOfPayments" class="form-label">Number of Payments</label>
                 <input type="number" id="numberOfPayments" class="form-control" value="1" min="1" max="60">
-                <small class="form-text text-muted">Number of payments (1 to 60)</small>
+                <small class="form-text text-muted">Number of payments (1 to 70)</small>
             </div>
             <button type="button" class="btn btn-primary" id="cmdConfigure">Configure Offer</button>
         </form>
