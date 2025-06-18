@@ -140,6 +140,25 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        const input = document.getElementById("contractTotal");
+
+        input.addEventListener("blur", function () {
+            const raw = input.value.replace(/[^\d]/g, "");
+            if (raw) {
+                const number = parseInt(raw, 10);
+                if (!isNaN(number)) {
+                    input.value = number.toLocaleString("en-US");
+                }
+            } else {
+                input.value = "";
+            }
+        });
+
+        input.addEventListener("focus", function () {
+            input.value = input.value.replace(/[^\d]/g, "");
+        });
+
+
         // Enforce 1-70 constraint on numberOfPayments when losing focus
         numberOfPayments.addEventListener("blur", function () {
             let value = parseInt(numberOfPayments.value);
@@ -292,7 +311,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function SelectScenario() {
-        _contractTotal = parseFloat(document.getElementById('contractTotal').value);
+        _contractTotal = parseFloat(document.getElementById('contractTotal').value.replace(/[^0-9.]/g, ""));
         if (isNaN(_contractTotal)) {
             alert("Invalid contract total");
             return;
@@ -340,7 +359,7 @@ document.addEventListener("DOMContentLoaded", function () {
         _numberOfPayments = 1;
         _paymentFrequency = 'Month';
         _billingTerm = "Month";
-        _contractTotal = parseFloat(document.getElementById('contractTotal').value);
+        _contractTotal = parseFloat(document.getElementById('contractTotal').value.replace(/[^0-9.]/g, ""));
         if (isNaN(_contractTotal)) {
             alert("Invalid contract total");
             return;
