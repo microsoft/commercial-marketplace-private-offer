@@ -680,6 +680,17 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
                         <div class="accordion-body">
                             <p>To support the provided deal configuration, please create the following private offer(s) as outlined below:</p>
+                            ${_variableAmounts ? `
+                            <p>When creating a private offer in Partner Center, you’ll see three options under Flexible billing. Please select “Customize SaaS plans and Professional Services” as shown below:</p>
+                            <p><strong>Steps:</strong></p>
+                            <ol>
+                            <li>Sign in to Partner Center.</li>
+                            <li>Navigate to Marketplace offers > Private offers tab.</li>
+                            <li>Click New private offer.</li>
+                            <li>Choose Customize SaaS plans and Professional Services.</li>
+                            <li>After selecting a plan and configuring the pricing, you’ll be able to schedule payments using the Flexible billing feature.</li>
+                            </ol> 
+                            ` : ""}
         `;
 
         _privateOffers.forEach((offer) => {
@@ -716,6 +727,9 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <ul class="mt-2">
                                     <li><a href="https://learn.microsoft.com/en-us/partner-center/marketplace-offers/isv-customer#create-a-private-offer-for-a-customer" target="_blank" rel="noopener noreferrer">Create a private offer</a></li>
                                     <li><a href="https://learn.microsoft.com/en-us/partner-center/marketplace-offers/isv-customer-faq" target="_blank" rel="noopener noreferrer">Private offers FAQ</a></li>
+                                    ${_variableAmounts ? `
+                                       <li><a href="https://learn.microsoft.com/en-us/partner-center/marketplace-offers/flexible-billing-schedule" target="_blank" rel="noopener noreferrer">Flexible billing</a></li>
+                                    ` : ""}
                                 </ul>
                             </details>
                             <details class="mt-3">
@@ -723,6 +737,9 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <ul class="mt-2">
                                     <li><a href="https://partner.microsoft.com/en-us/training/assets/detail/creating-private-offers-for-customers-mp4" target="_blank" rel="noopener noreferrer">Creating a private offer</a></li>
                                     <li><a href="https://partner.microsoft.com/en-us/training/assets/detail/handling-multiple-currencies-for-different-markets-mp4" target="_blank" rel="noopener noreferrer">Handling multiple currencies</a></li>
+                                    ${_variableAmounts ? `
+                                       <li><a href="https://microsoft.github.io/Mastering-the-Marketplace/partner-center/pc-flex-billing/" target="_blank" rel="noopener noreferrer">Flexible billing videos</a></li>
+                                    ` : ""}
                                 </ul>
                             </details>
                         </div>
