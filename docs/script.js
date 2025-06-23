@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
+
     // Initialize variables at the top to avoid TDZ errors
     let _thisMonth = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
     let _thisYear = new Date().getFullYear();
@@ -92,6 +93,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const contractDuration = document.getElementById("contractDuration");
     const numberOfPayments = document.getElementById("numberOfPayments");
     const configureButton = document.getElementById("cmdConfigure");
+    const durationSelect = document.getElementById('contractDuration');
 
     if (currencySymbol) {
         currencySymbol.textContent = new Intl.NumberFormat('default', {
@@ -99,6 +101,24 @@ document.addEventListener("DOMContentLoaded", function () {
             currency: 'USD'
         }).format(0).replace(/\d/g, '');
     }
+    durationSelect.addEventListener('change', function () {
+        const existing = document.getElementById('delayedBillingNote');
+        if (existing) existing.remove();
+
+        if (durationSelect.value === "Delayed-billing") {
+            const infoBlock = document.createElement('div');
+            infoBlock.id = 'delayedBillingNote';
+            infoBlock.className = 'alert alert-info mt-4';
+            infoBlock.innerHTML = `
+                <p><strong>To configure delayed billing:</strong></p>
+                <p>Select a contract duration of one year or longer, and set the Payment frequency to Flexible schedule. In the Number of payments field, enter one more than the expected number of payments — the first payment will be configured as $0 to create the delay.</p>
+                <p><strong>Example:</strong><br>
+                If the intended contract is for 2 years with 2 payments, select 3 payments. Payment 1 will be $0, and Payments 2 and 3 will follow the expected schedule.</p>
+            `;
+            const form = document.getElementById('privateOfferForm');
+            form.appendChild(infoBlock);
+        }
+    });
 
     if (contractDuration && numberOfPayments) {
         const paymentFrequency = document.getElementById("paymentFrequency");
